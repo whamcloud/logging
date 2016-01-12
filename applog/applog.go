@@ -6,12 +6,20 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
 )
 
-var taskSuffix = " ... "
+var (
+	taskSuffix = " ... "
+	std        *AppLogger
+)
+
+func init() {
+	std = New()
+}
 
 type displayLevel int
 
@@ -55,20 +63,34 @@ func (w *loggedWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
-func newLoggedWriter(prefix string, logger *AppLogger) *loggedWriter {
-	return &loggedWriter{
-		prefix: prefix,
-		logger: logger,
-	}
-}
-
 // OptSetter sets logger options
 type OptSetter func(*AppLogger)
 
-// JournalFile configures the logger's journaler to use the specified file
-func JournalFile(w io.Writer) OptSetter {
+// JournalFile configures the logger's journaler
+func JournalFile(w interface{}) OptSetter {
+	var writer io.Writer
+	switch w := w.(type) {
+	case io.Writer:
+		writer = w
+	case string:
+		switch strings.ToLower(w) {
+		case "stderr":
+			writer = os.Stderr
+		case "stdout":
+			writer = os.Stdout
+		default:
+			file, err := os.OpenFile(w, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0600)
+			if err != nil {
+				panic(fmt.Errorf("applog.JournalFile() failed to open %s: %s", w, err))
+			}
+			writer = file
+		}
+	default:
+		panic(fmt.Errorf("applog.JournalFile() called with invalid argument: %s", w))
+	}
+
 	return func(l *AppLogger) {
-		l.journal = log.New(w, "", log.LstdFlags)
+		l.journal = log.New(writer, "", log.LstdFlags)
 	}
 }
 
@@ -111,12 +133,20 @@ type AppLogger struct {
 
 // Out returns an io.Writer that can capture output
 func (l *AppLogger) Out() io.Writer {
-	return newLoggedWriter(">", l)
+	return l.Writer(">")
 }
 
 // Err returns an io.Writer that can capture output
 func (l *AppLogger) Err() io.Writer {
-	return newLoggedWriter("!", l)
+	return l.Writer("!")
+}
+
+// Writer returns an io.Writer for logging with the specified prefix
+func (l *AppLogger) Writer(prefix string) io.Writer {
+	return &loggedWriter{
+		prefix: prefix,
+		logger: l,
+	}
 }
 
 // DisplayLevel sets the logger's display level
@@ -124,8 +154,8 @@ func (l *AppLogger) DisplayLevel(level displayLevel) {
 	DisplayLevel(level)(l)
 }
 
-// JournalFile configures the logger's journaler to use the specified file
-func (l *AppLogger) JournalFile(w io.Writer) {
+// JournalFile configures the logger's journaler
+func (l *AppLogger) JournalFile(w interface{}) {
 	JournalFile(w)(l)
 }
 
@@ -230,8 +260,6 @@ func (l *AppLogger) Fail(v ...interface{}) {
 	os.Exit(1)
 }
 
-var std = New()
-
 // StandardLogger returns the standard logger configured by the library
 func StandardLogger() *AppLogger {
 	return std
@@ -240,6 +268,16 @@ func StandardLogger() *AppLogger {
 // SetStandard sets the standard logger to the supplied logger
 func SetStandard(l *AppLogger) {
 	std = l
+}
+
+// SetJournal sets the standard logger's journal writer
+func SetJournal(w interface{}) {
+	JournalFile(w)(std)
+}
+
+// SetLevel sets the standard logger's display level
+func SetLevel(d displayLevel) {
+	DisplayLevel(d)(std)
 }
 
 // Debug logs the entry and prints to stdout if level <= DEBUG
@@ -271,4 +309,19 @@ func StartTask(v ...interface{}) {
 // CompleteTask stops the spinner and prints a newline
 func CompleteTask(v ...interface{}) {
 	std.CompleteTask(v...)
+}
+
+// Out returns an io.Writer that can capture output
+func Out() io.Writer {
+	return std.Out()
+}
+
+// Err returns an io.Writer that can capture output
+func Err() io.Writer {
+	return std.Err()
+}
+
+// Writer returns an io.Writer for logging with the specified prefix
+func Writer(prefix string) io.Writer {
+	return std.Writer(prefix)
 }
