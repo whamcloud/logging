@@ -261,3 +261,14 @@ func Warn(v ...interface{}) {
 func Fail(v ...interface{}) {
 	std.Fail(v...)
 }
+
+// StartTask logs the entry at USER level and displays a spinner
+// for long-running tasks
+func StartTask(v ...interface{}) {
+	std.StartTask(v...)
+}
+
+// CompleteTask stops the spinner and prints a newline
+func CompleteTask(v ...interface{}) {
+	std.CompleteTask(v...)
+}
