@@ -74,6 +74,8 @@ func JournalFile(w interface{}) OptSetter {
 		writer = w
 	case string:
 		switch strings.ToLower(w) {
+		case "":
+			writer = ioutil.Discard
 		case "stderr":
 			writer = os.Stderr
 		case "stdout":
