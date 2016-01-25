@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -146,6 +147,7 @@ func New(options ...OptSetter) *AppLogger {
 type AppLogger struct {
 	Level displayLevel
 
+	mu          sync.Mutex
 	spinner     *spinner.Spinner
 	out         io.Writer
 	err         io.Writer
@@ -199,6 +201,18 @@ func (l *AppLogger) JournalFile(w interface{}) {
 	JournalFile(w)(l)
 }
 
+func (l *AppLogger) setLastEntry(entry string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lastEntry = entry
+}
+
+func (l *AppLogger) getLastEntry() string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.lastEntry
+}
+
 func (l *AppLogger) recordEntry(level displayLevel, v ...interface{}) {
 	if len(v) == 0 {
 		return
@@ -206,17 +220,17 @@ func (l *AppLogger) recordEntry(level displayLevel, v ...interface{}) {
 
 	switch arg := v[0].(type) {
 	case error:
-		l.lastEntry = fmt.Sprintf("ERROR: %s", arg)
+		l.setLastEntry(fmt.Sprintf("ERROR: %s", arg))
 	case string:
 		if len(v) > 1 {
-			l.lastEntry = fmt.Sprintf(arg, v[1:]...)
+			l.setLastEntry(fmt.Sprintf(arg, v[1:]...))
 		} else {
-			l.lastEntry = fmt.Sprint(arg)
+			l.setLastEntry(fmt.Sprint(arg))
 		}
 	default:
 		panic(fmt.Sprintf("Unhandled entry: %v", v))
 	}
-	l.journal.Printf("%s: %s", level, l.lastEntry)
+	l.journal.Printf("%s: %s", level, l.getLastEntry())
 }
 
 // Debug logs the entry and prints to stdout if level <= DEBUG
@@ -224,7 +238,7 @@ func (l *AppLogger) Debug(v ...interface{}) {
 	l.recordEntry(DEBUG, v...)
 
 	if l.Level <= DEBUG {
-		fmt.Fprintf(l.out, "%s: %s", DEBUG, l.lastEntry)
+		fmt.Fprintf(l.out, "%s: %s", DEBUG, l.getLastEntry())
 	}
 }
 
@@ -233,7 +247,7 @@ func (l *AppLogger) User(v ...interface{}) {
 	l.recordEntry(USER, v...)
 
 	if l.Level <= USER {
-		fmt.Fprintln(l.out, l.lastEntry)
+		fmt.Fprintln(l.out, l.getLastEntry())
 	}
 }
 
@@ -248,7 +262,7 @@ func (l *AppLogger) StartTask(v ...interface{}) {
 	l.recordEntry(USER, v...)
 
 	if l.Level == USER {
-		l.currentTask = l.lastEntry
+		l.currentTask = l.getLastEntry()
 		l.spinner.Prefix = l.currentTask + taskSuffix
 		l.spinner.Restart()
 	}
@@ -272,7 +286,7 @@ func (l *AppLogger) CompleteTask(v ...interface{}) {
 	}
 
 	if l.currentTask != "" && l.Level == USER {
-		fmt.Fprintln(l.out, l.lastEntry)
+		fmt.Fprintln(l.out, l.getLastEntry())
 		l.currentTask = ""
 	}
 }
@@ -284,7 +298,7 @@ func (l *AppLogger) Warn(v ...interface{}) {
 	l.spinner.Stop()
 	l.currentTask = ""
 	if l.Level <= WARN {
-		fmt.Fprintf(l.err, "%s: %s", WARN, l.lastEntry)
+		fmt.Fprintf(l.err, "%s: %s", WARN, l.getLastEntry())
 	}
 }
 
@@ -295,7 +309,7 @@ func (l *AppLogger) Fail(v ...interface{}) {
 	l.spinner.Stop()
 	l.currentTask = ""
 	if l.Level <= FAIL {
-		fmt.Fprintln(l.err, l.lastEntry)
+		fmt.Fprintln(l.err, l.getLastEntry())
 	}
 	os.Exit(1)
 }

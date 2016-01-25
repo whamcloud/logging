@@ -1,7 +1,6 @@
 # applog -- The Application Logger
 
-The applog library takes a UI-focused approach to logging for an application.
-It's primarily intended to be used for informing the application user of
+The applog library takes a UI-focused approach to logging for an application. It's primarily intended to be used for informing the application user of
 things like in-progress tasks, errors, and important messages.
 
 The library is also intended to make supporting an application easier, by
