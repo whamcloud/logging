@@ -53,14 +53,35 @@ const (
 	SILENT
 )
 
-type loggedWriter struct {
+// LoggedWriter implements io.Writer and is used to redirect logging from
+// 3rd-party libraries to this library.
+type LoggedWriter struct {
+	level  displayLevel
 	prefix string
 	logger *AppLogger
 }
 
-func (w *loggedWriter) Write(data []byte) (int, error) {
-	w.logger.Debug(fmt.Sprintf("%s %s", w.prefix, data))
+// Write logs the data at the specified loglevel
+func (w *LoggedWriter) Write(data []byte) (int, error) {
+	msg := string(data)
+	if len(w.prefix) > 0 {
+		msg = fmt.Sprintf("%s %s", w.prefix, data)
+	}
+	w.logger.logAt(w.level, msg)
+
 	return len(data), nil
+}
+
+// Prefix optionally sets the LoggedWriter prefix
+func (w *LoggedWriter) Prefix(prefix string) *LoggedWriter {
+	w.prefix = prefix
+	return w
+}
+
+// Level optionally sets the LoggedWriter log level
+func (w *LoggedWriter) Level(level displayLevel) *LoggedWriter {
+	w.level = level
+	return w
 }
 
 // OptSetter sets logger options
@@ -133,20 +154,37 @@ type AppLogger struct {
 	journal     *log.Logger
 }
 
-// Out returns an io.Writer that can capture output
+func (l *AppLogger) logAt(level displayLevel, msg string) {
+	switch level {
+	case SILENT:
+		return
+	case USER:
+		l.User(msg)
+	case WARN:
+		l.Warn(msg)
+	case FAIL:
+		l.Fail(msg)
+	default:
+		l.Debug(msg)
+	}
+}
+
+// Out returns an io.Writer that can capture prefixed stdout at DEBUG level
 func (l *AppLogger) Out() io.Writer {
-	return l.Writer(">")
+	return l.Writer().Level(DEBUG).Prefix(">")
 }
 
-// Err returns an io.Writer that can capture output
+// Err returns an io.Writer that can capture prefixed stderr at DEBUG level
 func (l *AppLogger) Err() io.Writer {
-	return l.Writer("!")
+	return l.Writer().Level(DEBUG).Prefix("!")
 }
 
-// Writer returns an io.Writer for logging with the specified prefix
-func (l *AppLogger) Writer(prefix string) io.Writer {
-	return &loggedWriter{
-		prefix: prefix,
+// Writer returns an io.Writer for injecting our logging into third-party
+// libraries
+func (l *AppLogger) Writer() *LoggedWriter {
+	return &LoggedWriter{
+		level:  DEBUG,
+		prefix: "",
 		logger: l,
 	}
 }
@@ -186,7 +224,7 @@ func (l *AppLogger) Debug(v ...interface{}) {
 	l.recordEntry(DEBUG, v...)
 
 	if l.Level <= DEBUG {
-		fmt.Fprintf(l.out, "%s: %s\n", DEBUG, l.lastEntry)
+		fmt.Fprintf(l.out, "%s: %s", DEBUG, l.lastEntry)
 	}
 }
 
@@ -246,7 +284,7 @@ func (l *AppLogger) Warn(v ...interface{}) {
 	l.spinner.Stop()
 	l.currentTask = ""
 	if l.Level <= WARN {
-		fmt.Fprintf(l.err, "%s: %s\n", WARN, l.lastEntry)
+		fmt.Fprintf(l.err, "%s: %s", WARN, l.lastEntry)
 	}
 }
 
@@ -313,17 +351,18 @@ func CompleteTask(v ...interface{}) {
 	std.CompleteTask(v...)
 }
 
-// Out returns an io.Writer that can capture output
+// Out returns an io.Writer that can capture prefixed stdout at DEBUG level
 func Out() io.Writer {
 	return std.Out()
 }
 
-// Err returns an io.Writer that can capture output
+// Err returns an io.Writer that can capture prefixed stderr at DEBUG level
 func Err() io.Writer {
 	return std.Err()
 }
 
-// Writer returns an io.Writer for logging with the specified prefix
-func Writer(prefix string) io.Writer {
-	return std.Writer(prefix)
+// Writer returns an io.Writer for injecting our logging into 3rd-party
+// libraries
+func Writer() *LoggedWriter {
+	return std.Writer()
 }
