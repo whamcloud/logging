@@ -238,7 +238,7 @@ func (l *AppLogger) Debug(v ...interface{}) {
 	l.recordEntry(DEBUG, v...)
 
 	if l.Level <= DEBUG {
-		fmt.Fprintf(l.out, "%s: %s", DEBUG, l.getLastEntry())
+		fmt.Fprintf(l.out, "%s: %s\n", DEBUG, l.getLastEntry())
 	}
 }
 
