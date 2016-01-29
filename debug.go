@@ -72,7 +72,7 @@ func (d *Debugger) Printf(f string, v ...interface{}) {
 	d.Outputf(3, f, v...)
 }
 
-func (d *Debugger) Print(f string, v ...interface{}) {
+func (d *Debugger) Print(v ...interface{}) {
 	d.Output(3, v...)
 }
 
