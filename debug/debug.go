@@ -23,8 +23,16 @@ type (
 
 var std *Debugger
 
+// EnableEnvVar is the name of an environment variable that, if set, will
+// enable this package's functionality.
+const EnableEnvVar = "ENABLE_DEBUG"
+
 func init() {
 	std = New(log.New(os.Stdout, "DEBUG ", log.Lmicroseconds|log.Lshortfile))
+
+	if os.Getenv(EnableEnvVar) != "" {
+		Enable()
+	}
 }
 
 // FlagVar returns a tuple of parameters suitable for flag.Var()
