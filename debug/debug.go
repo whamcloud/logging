@@ -4,16 +4,21 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 )
 
 type (
-	// Config holds configuration values for the package
+	// Debugger wraps a *log.Logger with some configuration and
+	// convenience methods
 	Debugger struct {
-		mu      sync.Mutex
+		sync.Mutex
 		log     *log.Logger
 		enabled bool
 	}
+
+	// Flag allows the flag package to enable debugging
+	Flag bool
 )
 
 var std *Debugger
@@ -22,60 +27,84 @@ func init() {
 	std = New(log.New(os.Stdout, "DEBUG ", log.Lmicroseconds|log.Lshortfile))
 }
 
+// FlagVar returns a tuple of parameters suitable for flag.Var()
+func FlagVar() (*Flag, string, string) {
+	f := Flag(false)
+	return &f, "debug", "enable debug output"
+}
+
+// IsBoolFlag satisfies the flag.boolFlag interface
+func (f *Flag) IsBoolFlag() bool {
+	return true
+}
+
+func (f *Flag) String() string {
+	return fmt.Sprintf("%v", *f)
+}
+
+// Set satisfies the flag.Value interface
+func (f *Flag) Set(value string) error {
+	b, err := strconv.ParseBool(value)
+	if err == nil {
+		std.enabled = b
+		f = (*Flag)(&b)
+	}
+	return err
+}
+
+// New wraps a *log.Logger with a *debug.Debugger
 func New(log *log.Logger) *Debugger {
 	return &Debugger{log: log}
 }
 
+// SetLogger accepts a new *log.Logger to wrap
 func (d *Debugger) SetLogger(log *log.Logger) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	d.log = log
 }
 
+// Enabled indicates whether or not debugging is enabled
 func (d *Debugger) Enabled() bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	return d.enabled
 }
 
+// Enable turns on debug logging
 func (d *Debugger) Enable() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	d.enabled = true
 }
 
+// Disable turns off debug logging
 func (d *Debugger) Disable() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+	d.Lock()
+	defer d.Unlock()
 	d.enabled = false
 }
 
-func (d *Debugger) Output(skip int, v ...interface{}) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if !d.enabled {
+// Output writes the output for a logging event
+func (d *Debugger) Output(skip int, s string) {
+	if !d.Enabled() {
 		return
 	}
-	d.log.Output(skip, fmt.Sprint(v...))
+	d.log.Output(skip, s)
 }
 
-func (d *Debugger) Outputf(skip int, f string, v ...interface{}) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if !d.enabled {
-		return
-	}
-	d.log.Output(skip, fmt.Sprintf(f, v...))
-}
-
+// Printf outputs formatted arguments
 func (d *Debugger) Printf(f string, v ...interface{}) {
-	d.Outputf(3, f, v...)
+	d.Output(3, fmt.Sprintf(f, v...))
 }
 
+// Print outputs the arguments
 func (d *Debugger) Print(v ...interface{}) {
-	d.Output(3, v...)
+	d.Output(3, fmt.Sprint(v...))
 }
 
+// Assertf accepts a boolean expression and formatted arguments, which
+// if the expression is false, will be printed before panicing.
 func (d *Debugger) Assertf(expr bool, f string, v ...interface{}) {
 	if !d.Enabled() {
 		return
@@ -87,6 +116,8 @@ func (d *Debugger) Assertf(expr bool, f string, v ...interface{}) {
 	}
 }
 
+// Assert accepts a boolean expression and arguments, which if the
+// expression is false, will be printed before panicing.
 func (d *Debugger) Assert(expr bool, v ...interface{}) {
 	if !d.Enabled() {
 		return
@@ -98,29 +129,34 @@ func (d *Debugger) Assert(expr bool, v ...interface{}) {
 	}
 }
 
-// SetDebugger replaces the debuggeruration
+// SetLogger replaces the wrapped *log.Logger
 func SetLogger(log *log.Logger) {
 	std.SetLogger(log)
 }
 
-// EnableDebug enables debug logging
+// Enable enables debug logging
 func Enable() {
 	std.Enable()
 }
 
-// DisableDebug disables debug logging
+// Disable disables debug logging
 func Disable() {
 	std.Disable()
 }
 
+// Enabled returns a bool indicating whether or not debugging is enabled
+func Enabled() bool {
+	return std.Enabled()
+}
+
 // Printf prints message if debug logging is enabled.
 func Printf(f string, v ...interface{}) {
-	std.Outputf(3, f, v...)
+	std.Output(3, fmt.Sprintf(f, v...))
 }
 
 // Print prints arguments if debug logging is enabled.
 func Print(v ...interface{}) {
-	std.Output(3, v...)
+	std.Output(3, fmt.Sprint(v...))
 }
 
 // Assertf will panic if expression is not true, but only if debugging is enabled
