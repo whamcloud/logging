@@ -2,6 +2,7 @@ package alert
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 )
@@ -9,6 +10,7 @@ import (
 type (
 	// Logger defines an interface for an alert logger
 	Logger interface {
+		SetOutput(io.Writer)
 		Output(int, string)
 
 		Warn(...interface{})
@@ -39,6 +41,11 @@ func NewStdErrLogger() *StdErrLogger {
 	return &StdErrLogger{
 		log: log.New(os.Stderr, "ALERT ", logFlags),
 	}
+}
+
+// SetOutput updates the embedded logger's output
+func (l *StdErrLogger) SetOutput(out io.Writer) {
+	l.log.SetOutput(out)
 }
 
 // Output writes the output for a logging event
