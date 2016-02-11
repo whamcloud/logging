@@ -77,6 +77,11 @@ func (l *StdErrLogger) Fatalf(f string, v ...interface{}) {
 
 // package-level functions follow
 
+// SetOutput configures the output writer for the logger
+func SetOutput(out io.Writer) {
+	std.SetOutput(out)
+}
+
 // Warn outputs a log message from the arguments
 func Warn(v ...interface{}) {
 	std.Output(3, fmt.Sprint(v...))

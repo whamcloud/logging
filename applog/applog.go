@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 	"sync"
 	"time"
+
+	"github.intel.com/hpdd/logging"
+	"github.intel.com/hpdd/logging/debug"
 
 	"github.com/briandowns/spinner"
 )
@@ -28,6 +30,8 @@ func (d displayLevel) String() string {
 	switch d {
 	case DEBUG:
 		return "DEBUG"
+	case TRACE:
+		return "TRACE"
 	case USER:
 		return "USER"
 	case WARN:
@@ -44,6 +48,8 @@ func (d displayLevel) String() string {
 const (
 	// DEBUG shows all
 	DEBUG displayLevel = iota
+	// TRACE shows application flow, suitable for support
+	TRACE
 	// USER shows user-appropriate messages
 	USER
 	// WARN shows warnings
@@ -90,27 +96,9 @@ type OptSetter func(*AppLogger)
 
 // JournalFile configures the logger's journaler
 func JournalFile(w interface{}) OptSetter {
-	var writer io.Writer
-	switch w := w.(type) {
-	case io.Writer:
-		writer = w
-	case string:
-		switch strings.ToLower(w) {
-		case "":
-			writer = ioutil.Discard
-		case "stderr":
-			writer = os.Stderr
-		case "stdout":
-			writer = os.Stdout
-		default:
-			file, err := os.OpenFile(w, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0600)
-			if err != nil {
-				panic(fmt.Errorf("applog.JournalFile() failed to open %s: %s", w, err))
-			}
-			writer = file
-		}
-	default:
-		panic(fmt.Errorf("applog.JournalFile() called with invalid argument: %s", w))
+	writer, err := logging.CreateWriter(w)
+	if err != nil {
+		panic(fmt.Errorf("Failed to create writer from %v: %s", w, err))
 	}
 
 	return func(l *AppLogger) {
@@ -160,6 +148,8 @@ func (l *AppLogger) logAt(level displayLevel, msg string) {
 	switch level {
 	case SILENT:
 		return
+	case TRACE:
+		l.Trace(msg)
 	case USER:
 		l.User(msg)
 	case WARN:
@@ -169,16 +159,6 @@ func (l *AppLogger) logAt(level displayLevel, msg string) {
 	default:
 		l.Debug(msg)
 	}
-}
-
-// Out returns an io.Writer that can capture prefixed stdout at DEBUG level
-func (l *AppLogger) Out() io.Writer {
-	return l.Writer().Level(DEBUG).Prefix(">")
-}
-
-// Err returns an io.Writer that can capture prefixed stderr at DEBUG level
-func (l *AppLogger) Err() io.Writer {
-	return l.Writer().Level(DEBUG).Prefix("!")
 }
 
 // Writer returns an io.Writer for injecting our logging into third-party
@@ -239,6 +219,15 @@ func (l *AppLogger) Debug(v ...interface{}) {
 
 	if l.Level <= DEBUG {
 		fmt.Fprintf(l.out, "%s: %s\n", DEBUG, l.getLastEntry())
+	}
+}
+
+// Trace logs the entry and prints to stdout if level <= TRACE
+func (l *AppLogger) Trace(v ...interface{}) {
+	l.recordEntry(TRACE, v...)
+
+	if l.Level <= TRACE {
+		fmt.Fprintf(l.out, "%s: %s\n", TRACE, l.getLastEntry())
 	}
 }
 
@@ -332,11 +321,22 @@ func SetJournal(w interface{}) {
 // SetLevel sets the standard logger's display level
 func SetLevel(d displayLevel) {
 	DisplayLevel(d)(std)
+
+	// Enable debug logging for anything using our debug library
+	if d == DEBUG {
+		debug.Enable()
+		debug.SetOutput(Writer())
+	}
 }
 
 // Debug logs the entry and prints to stdout if level <= DEBUG
 func Debug(v ...interface{}) {
 	std.Debug(v...)
+}
+
+// Trace logs the entry and prints to stdout if level <= TRACE
+func Trace(v ...interface{}) {
+	std.Trace(v...)
 }
 
 // User logs the entry and prints to stdout if level <= USER
@@ -363,16 +363,6 @@ func StartTask(v ...interface{}) {
 // CompleteTask stops the spinner and prints a newline
 func CompleteTask(v ...interface{}) {
 	std.CompleteTask(v...)
-}
-
-// Out returns an io.Writer that can capture prefixed stdout at DEBUG level
-func Out() io.Writer {
-	return std.Out()
-}
-
-// Err returns an io.Writer that can capture prefixed stderr at DEBUG level
-func Err() io.Writer {
-	return std.Err()
 }
 
 // Writer returns an io.Writer for injecting our logging into 3rd-party

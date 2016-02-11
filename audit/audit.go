@@ -30,12 +30,6 @@ type (
 	StdOutLogger struct {
 		log *log.Logger
 	}
-
-	// ExternalWriter is an optionally-prefixed writer for
-	// 3rd-party logging packages.
-	ExternalWriter struct {
-		log *log.Logger
-	}
 )
 
 var (

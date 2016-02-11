@@ -2,10 +2,13 @@ package debug
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
 	"sync"
+
+	"github.intel.com/hpdd/logging/external"
 )
 
 type (
@@ -13,8 +16,10 @@ type (
 	// convenience methods
 	Debugger struct {
 		sync.Mutex
-		log     *log.Logger
-		enabled bool
+		log       *log.Logger
+		enabled   bool
+		out       io.Writer
+		externals []*external.Writer
 	}
 
 	// Flag allows the flag package to enable debugging
@@ -28,7 +33,7 @@ var std *Debugger
 const EnableEnvVar = "ENABLE_DEBUG"
 
 func init() {
-	std = New(log.New(os.Stdout, "DEBUG ", log.Lmicroseconds|log.Lshortfile))
+	std = NewDebugger(os.Stderr)
 
 	if os.Getenv(EnableEnvVar) != "" {
 		Enable()
@@ -60,16 +65,12 @@ func (f *Flag) Set(value string) error {
 	return err
 }
 
-// New wraps a *log.Logger with a *debug.Debugger
-func New(log *log.Logger) *Debugger {
-	return &Debugger{log: log}
-}
-
-// SetLogger accepts a new *log.Logger to wrap
-func (d *Debugger) SetLogger(log *log.Logger) {
-	d.Lock()
-	defer d.Unlock()
-	d.log = log
+// NewDebugger creates a new *Debugger which logs to the supplied io.Writer
+func NewDebugger(out io.Writer) *Debugger {
+	return &Debugger{
+		out: out,
+		log: log.New(out, "DEBUG ", log.Lmicroseconds|log.Lshortfile),
+	}
 }
 
 // Enabled indicates whether or not debugging is enabled
@@ -137,9 +138,30 @@ func (d *Debugger) Assert(expr bool, v ...interface{}) {
 	}
 }
 
-// SetLogger replaces the wrapped *log.Logger
-func SetLogger(log *log.Logger) {
-	std.SetLogger(log)
+// package-level functions follow
+
+// Writer returns a new *external.Writer suitable for injection into
+// 3rd-party logging packages.
+func Writer() *external.Writer {
+	std.Lock()
+	defer std.Unlock()
+
+	w := external.NewWriter(std.out)
+	std.externals = append(std.externals, w)
+	return w
+}
+
+// SetOutput configures the output writer for the wrapped *log.Logger
+func SetOutput(out io.Writer) {
+	std.Lock()
+	defer std.Unlock()
+
+	std.out = out
+	std.log.SetOutput(std.out)
+
+	for _, writer := range std.externals {
+		writer.SetOutput(std.out)
+	}
 }
 
 // Enable enables debug logging
@@ -155,6 +177,11 @@ func Disable() {
 // Enabled returns a bool indicating whether or not debugging is enabled
 func Enabled() bool {
 	return std.Enabled()
+}
+
+// Output prints message if debug logging is enabled.
+func Output(skip int, msg string) {
+	std.Output(skip, msg)
 }
 
 // Printf prints message if debug logging is enabled.
