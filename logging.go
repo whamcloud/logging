@@ -6,6 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.intel.com/hpdd/logging/alert"
+	"github.intel.com/hpdd/logging/audit"
 )
 
 const (
@@ -36,4 +39,17 @@ func CreateWriter(w interface{}) (io.Writer, error) {
 	default:
 		return nil, fmt.Errorf("CreateWriter() called with unhandled input: %v", w)
 	}
+}
+
+// SetWriter sets up the writer for non-interactive logging libraries
+func SetWriter(w interface{}) error {
+	writer, err := CreateWriter(w)
+	if err != nil {
+		return err
+	}
+
+	audit.SetOutput(writer)
+	alert.SetOutput(writer)
+
+	return nil
 }
