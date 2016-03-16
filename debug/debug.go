@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"sync"
 
@@ -104,11 +105,17 @@ func (d *Debugger) Output(skip int, s string) {
 
 // Printf outputs formatted arguments
 func (d *Debugger) Printf(f string, v ...interface{}) {
+	if !d.Enabled() {
+		return
+	}
 	d.Output(3, fmt.Sprintf(f, v...))
 }
 
 // Print outputs the arguments
 func (d *Debugger) Print(v ...interface{}) {
+	if !d.Enabled() {
+		return
+	}
 	d.Output(3, fmt.Sprint(v...))
 }
 
@@ -186,11 +193,17 @@ func Output(skip int, msg string) {
 
 // Printf prints message if debug logging is enabled.
 func Printf(f string, v ...interface{}) {
+	if !std.Enabled() {
+		return
+	}
 	std.Output(3, fmt.Sprintf(f, v...))
 }
 
 // Print prints arguments if debug logging is enabled.
 func Print(v ...interface{}) {
+	if !std.Enabled() {
+		return
+	}
 	std.Output(3, fmt.Sprint(v...))
 }
 
@@ -216,4 +229,15 @@ func Assert(expr bool, v ...interface{}) {
 		std.Output(3, msg)
 		panic(msg)
 	}
+}
+
+// Shell runs command only in debug mode.
+func Shell(cmd string, args ...string) {
+	if !std.Enabled() {
+		return
+	}
+	c := exec.Command(cmd, args...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Run()
 }
