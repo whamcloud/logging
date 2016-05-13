@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.intel.com/hpdd/logging/external"
 )
@@ -18,7 +19,7 @@ type (
 	Debugger struct {
 		sync.Mutex
 		log       *log.Logger
-		enabled   bool
+		enabled   int32
 		out       io.Writer
 		externals []*external.Writer
 	}
@@ -60,7 +61,9 @@ func (f *Flag) String() string {
 func (f *Flag) Set(value string) error {
 	b, err := strconv.ParseBool(value)
 	if err == nil {
-		std.enabled = b
+		if b {
+			std.Enable()
+		}
 		f = (*Flag)(&b)
 	}
 	return err
@@ -76,23 +79,17 @@ func NewDebugger(out io.Writer) *Debugger {
 
 // Enabled indicates whether or not debugging is enabled
 func (d *Debugger) Enabled() bool {
-	d.Lock()
-	defer d.Unlock()
-	return d.enabled
+	return atomic.LoadInt32(&d.enabled) == 1
 }
 
 // Enable turns on debug logging
 func (d *Debugger) Enable() {
-	d.Lock()
-	defer d.Unlock()
-	d.enabled = true
+	atomic.CompareAndSwapInt32(&d.enabled, 0, 1)
 }
 
 // Disable turns off debug logging
 func (d *Debugger) Disable() {
-	d.Lock()
-	defer d.Unlock()
-	d.enabled = false
+	atomic.CompareAndSwapInt32(&d.enabled, 1, 0)
 }
 
 // Output writes the output for a logging event
