@@ -13,6 +13,7 @@ import (
 type (
 	// Logger defines an interface for an alert logger
 	Logger interface {
+		SetFlags(int)
 		SetOutput(io.Writer)
 		Output(int, string)
 
@@ -44,6 +45,11 @@ func NewStdErrLogger() *StdErrLogger {
 	return &StdErrLogger{
 		log: log.New(os.Stderr, "ALERT ", logFlags),
 	}
+}
+
+// SetFlags sets the output flags for the embedded logger
+func (l *StdErrLogger) SetFlags(flags int) {
+	l.log.SetFlags(flags)
 }
 
 // SetOutput updates the embedded logger's output
@@ -110,10 +116,12 @@ func Fatalf(f string, v ...interface{}) {
 // Abort prints error trace and exits
 func Abort(err error) {
 	var b bytes.Buffer
-	// basic output for comparison
-	std.Output(3, err.Error())
+
+	// We don't need to see where the abort was called, so we remove
+	// this flag before logging and exiting.
+	std.SetFlags(logFlags &^ log.Llongfile)
 
 	errors.Fprint(&b, err)
-	std.Output(3, "Abort error trace:\n"+b.String())
+	std.Output(3, "Aborting program execution due to error(s):\n"+b.String())
 	os.Exit(1)
 }
