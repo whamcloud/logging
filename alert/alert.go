@@ -1,10 +1,13 @@
 package alert
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 type (
@@ -101,5 +104,16 @@ func Fatal(v ...interface{}) {
 // Fatalf outputs a formatted log message from the arguments, then exits
 func Fatalf(f string, v ...interface{}) {
 	std.Output(3, fmt.Sprintf(f, v...))
+	os.Exit(1)
+}
+
+// Abort prints error trace and exits
+func Abort(err error) {
+	var b bytes.Buffer
+	// basic output for comparison
+	std.Output(3, err.Error())
+
+	errors.Fprint(&b, err)
+	std.Output(3, "Abort error trace:\n"+b.String())
 	os.Exit(1)
 }
