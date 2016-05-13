@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.intel.com/hpdd/debug"
+	"github.intel.com/hpdd/logging/debug"
 )
 
 var enableDebug bool

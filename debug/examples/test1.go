@@ -2,20 +2,14 @@ package main
 
 import (
 	"flag"
-	"log"
-	"os"
 
-	"github.intel.com/hpdd/debug"
+	"github.intel.com/hpdd/logging/debug"
 )
 
 var enableDebug bool
 
-var dbg *debug.Debugger
-
 func init() {
 	flag.BoolVar(&enableDebug, "debug", false, "enable debug logging")
-	// Localized debugger
-	dbg = debug.New(log.New(os.Stderr, "", log.LstdFlags|log.Llongfile))
 }
 
 func foo() {
@@ -26,19 +20,11 @@ func foo() {
 
 }
 
-func bar() {
-	a := 123
-	dbg.Print("local debugger")
-	dbg.Printf("format: %d", a)
-}
-
 func main() {
 	flag.Parse()
 	if enableDebug {
 		debug.Enable()
-		dbg.Enable()
 	}
 	debug.Printf("inside %s", "main")
 	foo()
-	bar()
 }
