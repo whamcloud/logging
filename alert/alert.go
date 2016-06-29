@@ -1,13 +1,10 @@
 package alert
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"os"
-
-	"github.com/pkg/errors"
 )
 
 type (
@@ -115,13 +112,11 @@ func Fatalf(f string, v ...interface{}) {
 
 // Abort prints error trace and exits
 func Abort(err error) {
-	var b bytes.Buffer
-
 	// We don't need to see where the abort was called, so we remove
 	// this flag before logging and exiting.
 	std.SetFlags(logFlags &^ log.Llongfile)
+	msg := fmt.Sprintf("%+v", err)
 
-	errors.Fprint(&b, err)
-	std.Output(3, "Aborting program execution due to error(s):\n"+b.String())
+	std.Output(3, "Aborting program execution due to error(s):\n"+msg)
 	os.Exit(1)
 }
