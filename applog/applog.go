@@ -252,6 +252,11 @@ func (l *AppLogger) StartTask(v ...interface{}) {
 
 	if l.Level == USER {
 		l.currentTask = l.getLastEntry()
+		// Don't fill log files with tons of spinner spam!
+		if !WriterIsTerminal(l.out) {
+			fmt.Fprint(l.out, l.currentTask+taskSuffix)
+			return
+		}
 		l.spinner.Prefix = l.currentTask + taskSuffix
 		l.spinner.Restart()
 	}
