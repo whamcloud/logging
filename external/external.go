@@ -33,8 +33,7 @@ func (w *Writer) Prefix(prefix string) *Writer {
 }
 
 func (w *Writer) Write(data []byte) (int, error) {
-	msg := string(data)
-	w.log.Output(3, msg)
+	w.log.Output(3, string(data))
 
 	return len(data), nil
 }

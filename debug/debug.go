@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
-	"sync"
 	"sync/atomic"
 
 	"github.intel.com/hpdd/logging/external"
@@ -17,11 +16,8 @@ type (
 	// Debugger wraps a *log.Logger with some configuration and
 	// convenience methods
 	Debugger struct {
-		sync.Mutex
-		log       *log.Logger
-		enabled   int32
-		out       io.Writer
-		externals []*external.Writer
+		log     *log.Logger
+		enabled int32
 	}
 
 	// Flag allows the flag package to enable debugging
@@ -72,7 +68,6 @@ func (f *Flag) Set(value string) error {
 // NewDebugger creates a new *Debugger which logs to the supplied io.Writer
 func NewDebugger(out io.Writer) *Debugger {
 	return &Debugger{
-		out: out,
 		log: log.New(out, "DEBUG ", log.Lmicroseconds|log.Lshortfile),
 	}
 }
@@ -142,30 +137,36 @@ func (d *Debugger) Assert(expr bool, v ...interface{}) {
 	}
 }
 
+// SetOutput configures the output writer for the debugger's logger
+func (d *Debugger) SetOutput(out io.Writer) {
+	d.log.SetOutput(out)
+}
+
+// Writer returns a new *external.Writer suitable for injection into
+// 3rd-party logging packages.
+func (d *Debugger) Writer() *external.Writer {
+	return external.NewWriter(d)
+}
+
+// Write implements io.Writer and allows the debugger to be used as
+// a log writer.
+func (d *Debugger) Write(data []byte) (int, error) {
+	d.Output(5, string(data))
+
+	return len(data), nil
+}
+
 // package-level functions follow
 
 // Writer returns a new *external.Writer suitable for injection into
 // 3rd-party logging packages.
 func Writer() *external.Writer {
-	std.Lock()
-	defer std.Unlock()
-
-	w := external.NewWriter(std.out)
-	std.externals = append(std.externals, w)
-	return w
+	return std.Writer()
 }
 
 // SetOutput configures the output writer for the wrapped *log.Logger
 func SetOutput(out io.Writer) {
-	std.Lock()
-	defer std.Unlock()
-
-	std.out = out
-	std.log.SetOutput(std.out)
-
-	for _, writer := range std.externals {
-		writer.SetOutput(std.out)
-	}
+	std.SetOutput(out)
 }
 
 // Enable enables debug logging

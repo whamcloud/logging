@@ -5,83 +5,93 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.intel.com/hpdd/logging/external"
 )
 
 type (
-	// Logger defines an interface for an alert logger
-	Logger interface {
-		SetFlags(int)
-		SetOutput(io.Writer)
-		Output(int, string)
-
-		Warn(...interface{})
-		Warnf(string, ...interface{})
-
-		Fatal(...interface{})
-		Fatalf(string, ...interface{})
-	}
-
-	// StdErrLogger is a logger which writes output to os.Stderr
-	StdErrLogger struct {
+	// Logger wraps a *log.Logger with some configuration and
+	// convenience methods
+	Logger struct {
 		log *log.Logger
 	}
 )
 
-var std Logger
+var std *Logger
 
 // Provide as much information as possible about where the message originated,
 // as this package should usually only be involved where there is a failure.
 const logFlags = log.Ldate | log.Ltime | log.LUTC | log.Llongfile
 
 func init() {
-	std = NewStdErrLogger()
+	std = NewLogger(os.Stderr)
 }
 
-// NewStdErrLogger returns a *StdErrLogger
-func NewStdErrLogger() *StdErrLogger {
-	return &StdErrLogger{
-		log: log.New(os.Stderr, "ALERT ", logFlags),
+// NewLogger returns a *Logger
+func NewLogger(out io.Writer) *Logger {
+	return &Logger{
+		log: log.New(out, "ALERT ", logFlags),
 	}
 }
 
 // SetFlags sets the output flags for the embedded logger
-func (l *StdErrLogger) SetFlags(flags int) {
+func (l *Logger) SetFlags(flags int) {
 	l.log.SetFlags(flags)
 }
 
 // SetOutput updates the embedded logger's output
-func (l *StdErrLogger) SetOutput(out io.Writer) {
+func (l *Logger) SetOutput(out io.Writer) {
 	l.log.SetOutput(out)
 }
 
 // Output writes the output for a logging event
-func (l *StdErrLogger) Output(skip int, s string) {
+func (l *Logger) Output(skip int, s string) {
 	l.log.Output(skip, s)
 }
 
 // Warn outputs a log message from the arguments
-func (l *StdErrLogger) Warn(v ...interface{}) {
+func (l *Logger) Warn(v ...interface{}) {
 	l.Output(3, fmt.Sprint(v...))
 }
 
 // Warnf outputs a formatted log message from the arguments
-func (l *StdErrLogger) Warnf(f string, v ...interface{}) {
+func (l *Logger) Warnf(f string, v ...interface{}) {
 	l.Output(3, fmt.Sprintf(f, v...))
 }
 
 // Fatal outputs a log message from the arguments, then exits
-func (l *StdErrLogger) Fatal(v ...interface{}) {
+func (l *Logger) Fatal(v ...interface{}) {
 	l.Output(3, fmt.Sprint(v...))
 	os.Exit(1)
 }
 
 // Fatalf outputs a formatted log message from the arguments, then exits
-func (l *StdErrLogger) Fatalf(f string, v ...interface{}) {
+func (l *Logger) Fatalf(f string, v ...interface{}) {
 	l.Output(3, fmt.Sprintf(f, v...))
 	os.Exit(1)
 }
 
+// Writer returns a new *external.Writer suitable for injection into
+// 3rd-party logging packages.
+func (l *Logger) Writer() *external.Writer {
+	return external.NewWriter(l)
+}
+
+// Write implements io.Writer and allows the logger to be used as
+// an embedded log writer.
+func (l *Logger) Write(data []byte) (int, error) {
+	l.Output(5, string(data))
+
+	return len(data), nil
+}
+
 // package-level functions follow
+
+// Writer returns a new *external.Writer suitable for injection into
+// 3rd-party logging packages.
+func Writer() *external.Writer {
+	return std.Writer()
+}
 
 // SetOutput configures the output writer for the logger
 func SetOutput(out io.Writer) {
