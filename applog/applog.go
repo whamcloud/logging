@@ -207,8 +207,10 @@ func (l *AppLogger) recordEntry(level displayLevel, v ...interface{}) {
 		} else {
 			l.setLastEntry(fmt.Sprint(arg))
 		}
+	case fmt.Stringer:
+		l.setLastEntry(fmt.Sprint(arg))
 	default:
-		panic(fmt.Sprintf("Unhandled entry: %v", v))
+		l.setLastEntry(fmt.Sprintf("unknown type in recordEntry: %s", v))
 	}
 	l.journal.Printf("%s: %s", level, l.getLastEntry())
 }
