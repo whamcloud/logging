@@ -1,3 +1,7 @@
+// Copyright (c) 2016 Intel Corporation. All rights reserved.
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file.
+
 /*
  * Quick benchmark used for figuring out the lowest-overhead method of
  * toggling debug. On a 2016 MBP, the benchmark shows these results:
