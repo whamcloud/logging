@@ -10,7 +10,7 @@ import (
 	"log"
 	"os"
 
-	"github.intel.com/hpdd/logging/external"
+	"github.com/intel-hpdd/logging/external"
 )
 
 type (

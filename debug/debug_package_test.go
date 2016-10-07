@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.intel.com/hpdd/logging/debug"
+	"github.com/intel-hpdd/logging/debug"
 )
 
 func TestPackageDisable(t *testing.T) {

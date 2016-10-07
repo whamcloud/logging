@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.intel.com/hpdd/logging/external"
+	"github.com/intel-hpdd/logging/external"
 )
 
 type (

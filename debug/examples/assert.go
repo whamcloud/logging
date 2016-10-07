@@ -7,7 +7,7 @@ package main
 import (
 	"flag"
 
-	"github.intel.com/hpdd/logging/debug"
+	"github.com/intel-hpdd/logging/debug"
 )
 
 var enableDebug bool

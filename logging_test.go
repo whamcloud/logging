@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.intel.com/hpdd/logging"
-	"github.intel.com/hpdd/logging/alert"
-	"github.intel.com/hpdd/logging/audit"
+	"github.com/intel-hpdd/logging"
+	"github.com/intel-hpdd/logging/alert"
+	"github.com/intel-hpdd/logging/audit"
 )
 
 func genTestFile(nameOnly bool) (*os.File, error) {

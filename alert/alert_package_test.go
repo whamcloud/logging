@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.intel.com/hpdd/logging/alert"
+	"github.com/intel-hpdd/logging/alert"
 )
 
 func TestPackageWriter(t *testing.T) {

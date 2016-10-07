@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.intel.com/hpdd/logging/debug"
+	"github.com/intel-hpdd/logging/debug"
 )
 
 var testInputs = map[int]string{

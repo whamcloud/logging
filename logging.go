@@ -11,8 +11,8 @@ import (
 	"os"
 	"strings"
 
-	"github.intel.com/hpdd/logging/alert"
-	"github.intel.com/hpdd/logging/audit"
+	"github.com/intel-hpdd/logging/alert"
+	"github.com/intel-hpdd/logging/audit"
 )
 
 const (

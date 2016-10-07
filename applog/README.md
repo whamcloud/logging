@@ -15,7 +15,7 @@ package main
 import (
     "time"
 
-    "github.intel.com/hpdd/applog"
+    "github.com/intel-hpdd/applog"
 )
 
 func main() {

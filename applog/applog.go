@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.intel.com/hpdd/logging"
-	"github.intel.com/hpdd/logging/debug"
+	"github.com/intel-hpdd/logging"
+	"github.com/intel-hpdd/logging/debug"
 
 	"github.com/briandowns/spinner"
 )
